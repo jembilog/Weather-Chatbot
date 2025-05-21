@@ -24,7 +24,7 @@ A sleek, voice-enabled chatbot built with **Python (Flask)** and **HTML/CSS/Java
 
 ## 🖼️ Preview
 
-![Screenshot of Chatbot UI](screenshot.png) <!-- Add your screenshot and rename accordingly -->
+![Screenshot of Chatbot UI](weatherchatbotpreview.png) <!-- Add your screenshot and rename accordingly -->
 
 ---
 
