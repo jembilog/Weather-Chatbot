@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weather Chatbot with Voice</title>
+<style>
+  /* Reset & base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: #fff;
+  }
+
+  /* Container */
+  .chat-container {
+    background: #2c2f4a;
+    width: 420px;
+    max-width: 90vw;
+    height: 600px;
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    padding: 20px;
+    background: #3f4277;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 1.2px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  }
+
+  /* Chatbox */
+  #chatbox {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #232547;
+    scrollbar-width: thin;
+    scrollbar-color: #667eea transparent;
+  }
+  #chatbox::-webkit-scrollbar {
+    width: 8px;
+  }
+  #chatbox::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  #chatbox::-webkit-scrollbar-thumb {
+    background-color: #667eea;
+    border-radius: 20px;
+  }
+
+  /* Messages */
+  .message {
+    margin-bottom: 15px;
+    max-width: 80%;
+    padding: 12px 18px;
+    border-radius: 20px;
+    line-height: 1.4;
+    font-size: 1rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    user-select: none;
+  }
+  .user {
+    background: #7f8cfa;
+    color: #222;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(127,140,250,0.5);
+  }
+  .bot {
+    background: #4a4f8a;
+    color: #e0e0ff;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 8px rgba(74,79,138,0.5);
+  }
+
+  /* Input area */
+  .input-area {
+    display: flex;
+    padding: 15px 20px;
+    background: #3f4277;
+    gap: 10px;
+  }
+  #input {
+    flex-grow: 1;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    outline: none;
+    transition: box-shadow 0.2s ease;
+  }
+  #input:focus {
+    box-shadow: 0 0 10px #667eea;
+  }
+  button {
+    background: #667eea;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    padding: 0 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102,126,234,0.6);
+  }
+  button:hover {
+    background: #5564d8;
+    box-shadow: 0 6px 16px rgba(85,100,216,0.8);
+  }
+  button:active {
+    background: #4756b8;
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 480px) {
+    .chat-container {
+      height: 90vh;
+      width: 95vw;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="header">Weather Chatbot 🌤️</div>
+  <div id="chatbox"></div>
+  <div class="input-area">
+    <input type="text" id="input" placeholder="Ask me about weather..." autocomplete="off" />
+    <button id="send">➤</button>
+    <button id="voiceBtn" title="Talk">🎤</button>
+  </div>
+</div>
+
+<script>
+  const chatbox = document.getElementById("chatbox");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const voiceBtn = document.getElementById("voiceBtn");
+
+  function appendMessage(text, sender) {
+    const msgDiv = document.createElement("div");
+    msgDiv.classList.add("message", sender);
+    msgDiv.textContent = text;
+    chatbox.appendChild(msgDiv);
+    chatbox.scrollTop = chatbox.scrollHeight;
+  }
+
+  async function sendMessage(text) {
+    if (!text) return;
+    appendMessage("You: " + text, "user");
+    input.value = "";
+
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+
+    const data = await response.json();
+    appendMessage("WeatherBot: " + data.response, "bot");
+    speakText(data.response);
+  }
+
+  sendBtn.addEventListener("click", () => sendMessage(input.value.trim()));
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage(input.value.trim());
+  });
+
+  // Voice Recognition
+  let recognizing = false;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      recognizing = true;
+      voiceBtn.textContent = "🎙️ Listening...";
+    };
+
+    recognition.onend = () => {
+      recognizing = false;
+      voiceBtn.textContent = "🎤";
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      recognizing = false;
+      voiceBtn.textContent = "🎤";
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      sendMessage(transcript);
+    };
+
+    voiceBtn.addEventListener("click", () => {
+      if (recognizing) recognition.stop();
+      else recognition.start();
+    });
+  } else {
+    voiceBtn.style.display = "none";
+  }
+
+  // Speech Synthesis
+  function speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  }
+</script>
+
+</body>
+</html>
